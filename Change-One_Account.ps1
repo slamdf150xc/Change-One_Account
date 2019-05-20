@@ -84,14 +84,16 @@ function Get-APIAccount {
 }
 function Get-Accounts {
     param (
-        $acctName
+        $acctName,
+        $acctAddy
     )
     try {
         Write-Host "Searching for accounts..." -NoNewline
 
-        $ret = Invoke-RestMethod -Uri "$baseURI/PasswordVault/api/Accounts?search=$acctName" -Method Get -ContentType "application/json" -Headers $header
+        $ret = Invoke-RestMethod -Uri "$baseURI/PasswordVault/api/Accounts?search=$acctName,%20$acctAddy" -Method Get -ContentType "application/json" -Headers $header
 
         Write-Host "Success!"-ForegroundColor Green
+
         return $ret.value.ID
     }
     catch {
@@ -171,8 +173,12 @@ Write-Host ""
 foreach ($a in $accounts) {
     Write-Host "---------------------"
     $acctName = $a."Target system user name"
+    $acctAddy = $a."Target system address"
 
-    ChangeCredential -acctName $acctName -acctID (Get-Accounts -acctName $acctName)
+    #ChangeCredential -acctName $acctName -acctID (Get-Accounts -acctName $acctName -acctAddy $acctAddy)
+    $accountNames =  Get-Accounts -acctName $acctName -acctAddy $acctAddy
+
+    Write-Host "$accountNames"
 }
 
 Write-Host "---------------------"
