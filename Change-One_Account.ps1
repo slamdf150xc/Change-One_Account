@@ -19,7 +19,8 @@
 	Randy Brown
 
 	VERSION HISTORY:
-	1.0 05/17/2019 - Initial release
+    1.0 05/17/2019 - Initial release
+    1.1 05/20/2019 - Added address to ID search
 #>
 ######################### Parameters ####################################################
 Param (
@@ -175,10 +176,7 @@ foreach ($a in $accounts) {
     $acctName = $a."Target system user name"
     $acctAddy = $a."Target system address"
 
-    #ChangeCredential -acctName $acctName -acctID (Get-Accounts -acctName $acctName -acctAddy $acctAddy)
-    $accountNames =  Get-Accounts -acctName $acctName -acctAddy $acctAddy
-
-    Write-Host "$accountNames"
+    ChangeCredential -acctName $acctName -acctID (Get-Accounts -acctName $acctName -acctAddy $acctAddy)
 }
 
 Write-Host "---------------------"
