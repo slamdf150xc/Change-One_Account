@@ -107,6 +107,23 @@ function ChangeCredential {
         $acctID
     )
     $data = @{
+        ChangeImmediately=$true
+        NewCredentials="Cyberark1"
+    }
+    $body = $data | ConvertTo-Json
+
+    try {
+        Write-Host "Changing credential for $acctName..." -NoNewline
+
+        Invoke-RestMethod -Uri "$baseURI/PasswordVault/API/Accounts/$acctID/SetNextPassword" -Method Post -Body $body -ContentType "application/json" -Headers $header | Out-Null
+
+        Write-Host "Success!" -ForegroundColor Green
+    }
+    catch {
+        ErrorHandler "ChangeCredential was not successful" $_.Exception.Message $_ $true
+    }
+    <#
+    $data = @{
         ChangeEntireGroup=$false
     }
     $body = $data | ConvertTo-Json
@@ -121,6 +138,7 @@ function ChangeCredential {
     catch {
         ErrorHandler "ChangeCredential was not successful" $_.Exception.Message $_ $true
     }
+    #>
 }
 function ErrorHandler {
     param (
