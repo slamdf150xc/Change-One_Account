@@ -24,9 +24,14 @@
 #>
 ######################### Parameters ####################################################
 Param (
-	[Parameter(Mandatory = $true)]
+	[Parameter(Mandatory = $false)]
 	[string] $CSV
 )
+
+######################## IMPORT MODULES/ASSEMBLY LOADING #################################
+
+Add-Type -AssemblyName System.web;
+
 ######################### GLOBAL VARIABLE DECLARATIONS ###################################
 
 $baseURI = "https://components.cyberarkdemo.com"		# URL or IP address for your environment
@@ -60,7 +65,6 @@ function EPVLogin {
 	}
 	return $ret
 }
-
 function EPVLogoff {
 	try {
 		Write-Host "Logging off..." -NoNewline
@@ -104,41 +108,78 @@ function Get-Accounts {
 function ChangeCredential {
     param (
         $acctName,
-        $acctID
+        $acctID,
+        $pw
     )
     $data = @{
         ChangeImmediately=$true
-        NewCredentials="Cyberark1"
+        NewCredentials=$pw
     }
     $body = $data | ConvertTo-Json
 
     try {
         Write-Host "Changing credential for $acctName..." -NoNewline
 
-        Invoke-RestMethod -Uri "$baseURI/PasswordVault/API/Accounts/$acctID/SetNextPassword" -Method Post -Body $body -ContentType "application/json" -Headers $header | Out-Null
+        Invoke-RestMethod -Uri "$baseURI/PasswordVault/API/Accounts/$acctID/SetNextPassword" -Method Post -Body $body -ContentType "application/json" -Headers $header
 
         Write-Host "Success!" -ForegroundColor Green
     }
     catch {
         ErrorHandler "ChangeCredential was not successful" $_.Exception.Message $_ $true
     }
-    <#
+}
+function Get-AccountGroup {
+    param (
+        $safeName
+    )
+    try {
+        Write-Host "Getting account group ID..." -NoNewline
+
+        $ret = Invoke-RestMethod -URI "$baseURI/PasswordVault/API/AccountGroups?Safe=$safeName" -Method Get -ContentType "application/json" -Headers $header
+
+        Write-Host "Success!" -ForegroundColor Green
+        return $ret.GroupID
+    }
+    catch {
+        ErrorHandler "Get-AccountGroup was not successful" $_.Exception.Message $_ $true
+    }
+}
+function Remove-MemberFromGroup {
+    param (
+        $grpID,
+        $acctID
+    )
+    try {
+        Write-Host "Removing member from group..." -NoNewline
+
+        Invoke-RestMethod -Uri "$baseURI/PasswordVault/API/AccountGroups/$grpID/Members/$acctID" -Method Delete -ContentType "application/json" -Headers $header | Out-Null
+
+        Write-Host "Success!" -ForegroundColor Green
+    }
+    catch {
+        ErrorHandler "Remove-MemberFromGroup" $_.Exception.Message $_ $true
+    }
+}
+function Add-MemberToGroup {
+    param (
+        $grpID,
+        $acctID
+    )
     $data = @{
-        ChangeEntireGroup=$false
+        AccountID=$acctID
     }
     $body = $data | ConvertTo-Json
 
     try {
-        Write-Host "Changing credential for $acctName..." -NoNewline
+        Write-Host "Adding member to group..." -NoNewline
 
-        Invoke-RestMethod -Uri "$baseURI/PasswordVault/API/Accounts/$acctID/Change" -Method Post -Body $body -ContentType "application/json" -Headers $header | Out-Null
+        Invoke-RestMethod -Uri "$baseURI/PasswordVault/api/AccountGroups/$grpID/Members" -Method Post -ContentType "application/json" -Headers $header -Body $body | Out-Null
 
         Write-Host "Success!" -ForegroundColor Green
     }
     catch {
-        ErrorHandler "ChangeCredential was not successful" $_.Exception.Message $_ $true
+        ErrorHandler "Add-MemberToGroup" $_.Exception.Message $_ $true
     }
-    #>
 }
 function ErrorHandler {
     param (
@@ -187,17 +228,33 @@ $script:header.Add("Authorization", $login.CyberArkLogonResult)
 
 $accounts = Import-Csv -Path $CSV
 
-Write-Host ""
+Write-Host "$newCred"
 
 foreach ($a in $accounts) {
     Write-Host "---------------------"
     $acctName = $a."Target system user name"
     $acctAddy = $a."Target system address"
+    $safeName = $a."Safe"
 
-    ChangeCredential -acctName $acctName -acctID (Get-Accounts -acctName $acctName -acctAddy $acctAddy)
+    $gpID = Get-AccountGroup -safeName $safeName
+    $acctID = Get-Accounts -acctName $acctName -acctAddy $acctAddy
+    
+    Remove-MemberFromGroup -grpID $gpID -acctID $acctID
+    ChangeCredential -acctName $acctName -acctID $acctID -pw $newCred
+}
+
+foreach ($a in $accounts) {
+    Write-Host "---------------------"
+    $acctName = $a."Target system user name"
+    $acctAddy = $a."Target system address"
+    $safeName = $a."Safe"
+
+    $gpID = Get-AccountGroup -safeName $safeName
+    $acctID = Get-Accounts -acctName $acctName -acctAddy $acctAddy
+
+    Add-MemberToGroup -grpID $gpID -acctID $acctID
 }
 
 Write-Host "---------------------"
 EPVLogoff
-
 ########################### END SCRIPT ###################################################
