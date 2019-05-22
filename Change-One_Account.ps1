@@ -6,7 +6,7 @@
     
 .EXAMPLE
 	./Change-One_Account.ps1
-	./Change-One_Account.ps1 -CSV C:\temp\InventoryReports.InventoryReportUI_2019-05-16_155155.639.csv
+	./Change-One_Account.ps1 -CSV "C:\temp\InventoryReports.InventoryReportUI_2019-05-16_155155.639.csv" -newCred "N3wSuperS3ceretP@ssword!"
 
 .INPUTS
 	CSV - The full path to the .csv exported from PVWA
@@ -24,8 +24,10 @@
 #>
 ######################### Parameters ####################################################
 Param (
-	[Parameter(Mandatory = $false)]
-	[string] $CSV
+	[Parameter(Mandatory = $true)]
+    [string] $CSV,
+    [Parameter(Mandatory = $true)]
+    [string] $newCred
 )
 
 ######################## IMPORT MODULES/ASSEMBLY LOADING #################################
@@ -227,8 +229,6 @@ $script:header = New-Object "System.Collections.Generic.Dictionary[[String],[Str
 $script:header.Add("Authorization", $login.CyberArkLogonResult)
 
 $accounts = Import-Csv -Path $CSV
-
-Write-Host "$newCred"
 
 foreach ($a in $accounts) {
     Write-Host "---------------------"
